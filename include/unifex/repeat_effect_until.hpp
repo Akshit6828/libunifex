@@ -27,7 +27,6 @@
 #include <unifex/functional.hpp>
 
 #include <utility>
-#include <cassert>
 #include <exception>
 
 #include <unifex/detail/prologue.hpp>
@@ -65,12 +64,12 @@ public:
   {}
 
   void set_value() noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
 
     // This signals to repeat_effect_until the operation.
     auto* op = op_;
 
-    assert(op->isSourceOpConstructed_);
+    UNIFEX_ASSERT(op->isSourceOpConstructed_);
     op->isSourceOpConstructed_ = false;
     op->sourceOp_.destruct();
 
@@ -80,7 +79,7 @@ public:
         unifex::set_value(std::move(op->receiver_));
         return;
       }
-      auto& sourceOp = op->sourceOp_.construct_from([&]() noexcept {
+      auto& sourceOp = op->sourceOp_.construct_with([&]() noexcept {
           return unifex::connect(op->source_, type{op});
         });
       op->isSourceOpConstructed_ = true;
@@ -92,7 +91,7 @@ public:
           unifex::set_value(std::move(op->receiver_));
           return;
         }
-        auto& sourceOp = op->sourceOp_.construct_from([&] {
+        auto& sourceOp = op->sourceOp_.construct_with([&] {
             return unifex::connect(op->source_, type{op});
           });
         op->isSourceOpConstructed_ = true;
@@ -104,14 +103,14 @@ public:
   }
 
   void set_done() noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_done(std::move(op_->receiver_));
   }
 
   template(typename Error)
     (requires receiver<Receiver, Error>)
   void set_error(Error&& error) noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_error(std::move(op_->receiver_), (Error&&)error);
   }
 
@@ -136,7 +135,7 @@ private:
   }
 
   const Receiver& get_rcvr() const noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);   
     return op_->receiver_;
   }
 
@@ -158,7 +157,7 @@ public:
   , predicate_((Predicate2&&)predicate)
   , receiver_((Receiver2&&)dest)
   {
-    sourceOp_.construct_from([&] {
+    sourceOp_.construct_with([&] {
         return unifex::connect(source_, _receiver_t{this});
       });
   }

@@ -21,8 +21,7 @@
 #include <unifex/sync_wait.hpp>
 #include <unifex/single_thread_context.hpp>
 #include <unifex/scheduler_concepts.hpp>
-
-#include <cassert>
+#include <unifex/optional.hpp>
 
 using namespace unifex;
 
@@ -35,7 +34,7 @@ int main() {
                 transform(
                     schedule(ctx.get_scheduler()),
                     []() { return 42; }))));
-    assert(result.value() == 42);
+    UNIFEX_ASSERT(result.value() == 42);
 
     return 0;
 }

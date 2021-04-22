@@ -33,7 +33,6 @@
 #endif
 
 #include <exception>
-#include <cassert>
 
 #include <unifex/detail/prologue.hpp>
 
@@ -43,7 +42,7 @@ using namespace _util;
 
 template <typename... Types>
 using _is_single_valued_tuple =
-    bool_constant<1 >= sizeof...(Types)>;
+    bool_constant<(1 >= sizeof...(Types))>;
 
 template <typename... Types>
 using _is_single_valued_variant =
@@ -204,7 +203,7 @@ struct _awaiter {
 
     coro::coroutine_handle<ThisPromise> await_suspend(
         coro::coroutine_handle<OtherPromise> h) noexcept {
-      assert(coro_);
+      UNIFEX_ASSERT(coro_);
       auto& promise = coro_.promise();
       promise.continuation_ = h;
       promise.doneCallback_ = &forward_unhandled_done_callback<OtherPromise>;

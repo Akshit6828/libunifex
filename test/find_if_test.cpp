@@ -22,6 +22,7 @@
 #include <unifex/transform.hpp>
 #include <unifex/when_all.hpp>
 #include <unifex/on.hpp>
+#include <unifex/optional.hpp>
 
 #include <gtest/gtest.h>
 
@@ -44,7 +45,7 @@ TEST(find_if, find_if_sequential) {
             },
             unifex::seq),
         [](std::vector<int>::iterator v, int another_parameter) noexcept {
-          assert(another_parameter == 3);
+          UNIFEX_ASSERT(another_parameter == 3);
           return v;
         }));
 
@@ -66,6 +67,7 @@ TEST(find_if, find_if_parallel) {
     static_thread_pool ctx;
     optional<std::vector<int>::iterator> result = sync_wait(
       unifex::on(
+        ctx.get_scheduler(),
         transform(
           find_if(
               just(begin(input), end(input), checkValue),
@@ -76,10 +78,9 @@ TEST(find_if, find_if_parallel) {
               },
               unifex::par),
           [](std::vector<int>::iterator v, int another_parameter) noexcept {
-            assert(another_parameter == checkValue);
+            UNIFEX_ASSERT(another_parameter == checkValue);
             return v;
-          }),
-        ctx.get_scheduler()));
+          })));
 
     EXPECT_EQ(**result, checkValue);
     // Expect 62 iterations to run to validate cancellation
@@ -113,7 +114,7 @@ TEST(find_if, Pipeable) {
     // onwards to the result.
     // Precise API shape for the data being passed through is TBD, this is
     // one option only.
-    optional<std::vector<int>::iterator> result = just(begin(input), end(input), 3)
+    auto op = just(begin(input), end(input), 3)
       | find_if(
           [&](const int& v, int another_parameter) noexcept {
             return v == another_parameter;
@@ -121,11 +122,11 @@ TEST(find_if, Pipeable) {
           unifex::seq)
       | transform(
           [](std::vector<int>::iterator v, int another_parameter) noexcept {
-            assert(another_parameter == 3);
+            UNIFEX_ASSERT(another_parameter == 3);
             return v;
-          })
-      | on(ctx.get_scheduler())
-      | sync_wait();
+          });
+    auto result =
+        sync_wait(on(ctx.get_scheduler(), std::move(op)));
 
     EXPECT_EQ(**result, 3);
 }

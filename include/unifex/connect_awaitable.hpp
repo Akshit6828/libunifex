@@ -24,12 +24,12 @@
 #include <unifex/type_traits.hpp>
 #include <unifex/tuple.hpp>
 #include <unifex/utility.hpp>
+#include <unifex/optional.hpp>
 
 #if UNIFEX_NO_COROUTINES
 # error "Coroutine support is required to use <unifex/connect_awaitable.hpp>"
 #endif
 
-#include <cassert>
 #include <type_traits>
 
 #include <unifex/detail/prologue.hpp>

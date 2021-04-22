@@ -24,8 +24,6 @@
 #include <unifex/scheduler_concepts.hpp>
 #include <unifex/optional.hpp>
 
-#include <cassert>
-
 #include <gtest/gtest.h>
 
 using namespace unifex;

@@ -69,7 +69,10 @@
   * `unstoppable_token`
   * `inplace_stop_token` / `inplace_stop_source`
 * Synchronisation Primitives
+  * `async_manual_reset_event`
   * `async_mutex`
+* Other
+  * `async_scope`
 
 # Receiver Queries
 
@@ -154,12 +157,34 @@ Returns a sender that completes synchronously by calling `set_done()`.
 
 Returns a sender that completes synchronously by calling `set_error()` with `e`.
 
+### `just_with(callable)`
+
+Returns a sender that completes synchronously by calling `set_value()` with
+the result of invoking the callable with no arguments. If the callable returns
+`void`, then the sender completes synchronously by first invoking the callable
+and then calling `set_value()` with no arguments.
+
+If the invocation of the callable exits with an exception, the exception is
+caught and passed to the receiver's `set_error` with `std::current_exception()`.
+
+`just_with(callable)` is synonymous with `transform(just(), callable)`.
+
 ### `stop_if_requested()`
 
 Returns a sender that queries the receiver with `get_stop_token()`, tests the
 resulting stop token with `stop_requested()`. If the result is `true`, then
 the sender completes synchronously with `set_done()`. Otherwise, the sender
 completes synchronously by calling `set_value()` with no arguments.
+
+### `defer(callable)`
+
+Accepts a callable that returns a sender. Returns a sender that, when it
+is started, invokes the callable and connects and starts the returned sender.
+
+If the invocation of the callable exits with an exception, the exception is
+caught and passed to the receiver's `set_error` with `std::current_exception()`.
+
+`defer(callable)` is synonymous with `let(just(), callable)`.
 
 # Sender Algorithms
 
@@ -170,7 +195,9 @@ Returns a sender that transforms the value of the `predecessor` by calling
 
 ### `transform_done(Sender predecessor, Func func) -> Sender`
 
-Returns a sender that calls `auto finalSender = func()` in `set_done()` and then starts the returned `finalSender`. This allows a call to `set_done` to be delayed, to be tranformed into an error or a value, etc..
+Returns a sender that calls `auto finalSender = func()` in `set_done()` and then
+starts the returned `finalSender`. This allows a call to `set_done` to be
+delayed, to be transformed into an error or a value, etc..
 
 ### `finally(Sender source, Sender completion) -> Sender`
 
@@ -211,8 +238,6 @@ Returns a sender that produces the result from `source`, which must
 declare the nested `value_types`/`error_types` type aliases which describe which
 overloads of `set_value()`/`set_error()` they will call, on the execution context
 associated with `scheduler`.
-
-
 
 ### `on(Sender sender, Scheduler scheduler) -> Sender`
 
@@ -887,6 +912,59 @@ proposed in [P0660R10](https://wg21.link/P0660R10).
 
 ## Synchronisation Primitives
 
+### `async_manual_reset_event`
+
+A thread synchronisation event that, when set, must be manually reset.  Waiting
+for an event to be set is an (unstoppable) asynchronous operation.
+
+```c++
+namespace unifex
+{
+  struct async_manual_reset_event {
+    // Constructs an event in the "unset" state.
+    async_manual_reset_event() noexcept;
+
+    // Constructs an event in the "set" state if startSet is true, or the
+    // default, "unset" state if startSet is false.
+    explicit async_manual_reset_event(bool startSet) noexcept;
+
+    async_manual_reset_event(async_manual_reset_event&&) = delete;
+    async_manual_reset_event(const async_manual_reset_event&) = delete;
+
+    ~async_manual_reset_event();
+
+    // Puts the event into the "set" state.  If the event was not already in the
+    // "set" state then there may be waiters waiting, in which case they will be
+    // resumed.
+    //
+    // This method has acquire-release semantics.
+    void set() noexcept;
+
+    // Returns true iff the event is in the "set" state.
+    //
+    // This method has acquire semantics.
+    bool ready() const noexcept;
+
+    // Puts the event into the "unset" state.
+    //
+    // This method has acquire-release semantics.
+    void reset() noexcept;
+
+    // Returns a sender that will complete when the event is "set".
+    //
+    // The sender will complete immediately if the event is already "set".
+    //
+    // Regardless of the receiver to which this sender is connected, the sender
+    // is unstoppable.
+    //
+    // Regardless of whether the sender completes immediately or waits first,
+    // the completion will first be scheduled onto the receiver's scheduler with
+    // schedule().
+    [[nodiscard]] sender auto async_wait() noexcept;
+  };
+}
+```
+
 ### `async_mutex`
 
 A mutex that allows acquiring the mutex asynchronously.
@@ -921,4 +999,55 @@ namespace unifex
     void unlock() noexcept;
   };
 };
+```
+
+## Other
+
+### `async_scope`
+
+A place to safely spawn work such that it can be joined later.
+
+```c++
+namespace unifex
+{
+  struct async_scope {
+    async_scope() noexcept;
+    async_scope(async_scope&&) = delete;
+    async_scope(const async_scope&) = delete;
+
+    // Asserts if the sender returned from cleanup has not yet completed.
+    ~async_scope();
+
+    // Returns a sender that, when started, marks this scope as cleaned up,
+    // requests stop on the internal stop source, and then waits for all
+    // outstanding work to complete.
+    //
+    // The sender returned from cleanup must complete before this scope is
+    // destroyed.
+    //
+    // cleanup is thread-safe and idempotent (i.e. it can be invoked multiple
+    // times in series or in parallel).
+    [[nodiscard]] sender cleanup() noexcept;
+
+    // Connects sender to an internal receiver and starts the operation.  Once
+    // started, the given sender must complete with void or done; completing
+    // with an error will result in a call to std::terminate.
+    //
+    // The receiver to which the sender is connected responds to get_stop_token
+    // with a stoppable token that becomes stopped when clean-up begins.
+    //
+    // Space for the operation state is allocated with std::make_unique and
+    // so this operation may throw if the allocation fails.  This operation may
+    // also throw if connect throws.
+    //
+    // Once connect has succeeded, start will only be called if this scope has
+    // not yet been cleaned up; if a call to spawn loses a race with a call to
+    // cleanup, the operation state created by connect will be destroyed and
+    // deallocated without being started.
+    void spawn(sender);
+
+    // Implemented as spawn(on(sender, scheduler)).
+    void spawn(sender, scheduler);
+  };
+}
 ```

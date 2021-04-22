@@ -26,7 +26,6 @@
 #include <unifex/bind_back.hpp>
 
 #include <utility>
-#include <cassert>
 #include <exception>
 
 #include <unifex/detail/prologue.hpp>
@@ -78,19 +77,19 @@ public:
     (requires receiver_of<Receiver, Values...>)
   void set_value(Values&&... values) noexcept(
       is_nothrow_receiver_of_v<Receiver, Values...>) {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_value(std::move(op_->receiver_), (Values&&)values...);
   }
 
   void set_done() noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     auto op = op_; // preserve pointer value.
     if constexpr (
       is_nothrow_callable_v<Done> &&
       is_nothrow_connectable_v<final_sender_t, final_receiver>) {
       op->startedOp_ = 0;
       unifex::deactivate_union_member(op->sourceOp_);
-      unifex::activate_union_member_from(op->finalOp_, [&] {
+      unifex::activate_union_member_with(op->finalOp_, [&] {
         return unifex::connect(std::move(op->done_)(), final_receiver{op});
       });
       op->startedOp_ = 0 - 1;
@@ -99,7 +98,7 @@ public:
       UNIFEX_TRY {
         op->startedOp_ = 0;
         unifex::deactivate_union_member(op->sourceOp_);
-        unifex::activate_union_member_from(op->finalOp_, [&] {
+        unifex::activate_union_member_with(op->finalOp_, [&] {
           return unifex::connect(std::move(op->done_)(), final_receiver{op});
         });
         op->startedOp_ = 0 - 1;
@@ -113,7 +112,7 @@ public:
   template(typename Error)
       (requires receiver<Receiver, Error>)
   void set_error(Error&& error) noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_error(std::move(op_->receiver_), (Error&&)error);
   }
 
@@ -139,7 +138,7 @@ private:
   }
 
   const Receiver& get_receiver() const noexcept {
-    assert(op_ != nullptr);   
+    UNIFEX_ASSERT(op_ != nullptr);   
     return op_->receiver_;
   }
 
@@ -162,19 +161,19 @@ public:
     (requires receiver_of<Receiver, Values...>)
   void set_value(Values&&... values) noexcept(
       is_nothrow_receiver_of_v<Receiver, Values...>) {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_value(std::move(op_->receiver_));
   }
 
   void set_done() noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_done(std::move(op_->receiver_));
   }
 
   template(typename Error)
     (requires receiver<Receiver, Error>)
   void set_error(Error&& error) noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_error(std::move(op_->receiver_), (Error&&)error);
   }
 
@@ -199,7 +198,7 @@ private:
   }
 
   const Receiver& get_receiver() const noexcept {
-    assert(op_ != nullptr);   
+    UNIFEX_ASSERT(op_ != nullptr);   
     return op_->receiver_;
   }
 
@@ -220,7 +219,7 @@ public:
   : done_((Done2&&)done)
   , receiver_((Receiver2&&)dest)
   {
-    unifex::activate_union_member_from(sourceOp_, [&] {
+    unifex::activate_union_member_with(sourceOp_, [&] {
         return unifex::connect((Source&&)source, source_receiver{this});
       });
     startedOp_ = 0 + 1;

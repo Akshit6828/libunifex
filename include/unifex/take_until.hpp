@@ -30,7 +30,6 @@
 #include <atomic>
 #include <type_traits>
 #include <utility>
-#include <cassert>
 
 #include <unifex/detail/prologue.hpp>
 
@@ -170,7 +169,7 @@ struct _stream<SourceStream, TriggerStream>::type {
             stream_.triggerNextStarted_ = true;
 
             UNIFEX_TRY {
-              stream_.triggerNextOp_.construct_from([&] {
+              stream_.triggerNextOp_.construct_with([&] {
                 return unifex::connect(
                   next(stream_.trigger_),
                   trigger_next_receiver{stream_});
@@ -294,7 +293,7 @@ struct _stream<SourceStream, TriggerStream>::type {
 
         void start() noexcept {
           UNIFEX_TRY {
-            sourceOp_.construct_from([&] {
+            sourceOp_.construct_with([&] {
               return unifex::connect(
                 cleanup(stream_.source_),
                 source_receiver{*this});
@@ -320,7 +319,7 @@ struct _stream<SourceStream, TriggerStream>::type {
 
         void start_trigger_cleanup() noexcept final {
           UNIFEX_TRY {
-            triggerOp_.construct_from([&] {
+            triggerOp_.construct_with([&] {
               return unifex::connect(
                 cleanup(stream_.trigger_),
                 trigger_receiver{*this});
@@ -439,7 +438,7 @@ struct _stream<SourceStream, TriggerStream>::type {
       // Otherwise, the cleanup(stream) operation has already been started
       // before the next(trigger) operation finished.
       // We have the responsibility for launching cleanup(trigger).
-      assert(cleanupOperation_ != nullptr);
+      UNIFEX_ASSERT(cleanupOperation_ != nullptr);
       cleanupOperation_->start_trigger_cleanup();
   }
 

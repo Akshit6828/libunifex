@@ -28,7 +28,6 @@
 #include <unifex/functional.hpp>
 
 #include <utility>
-#include <cassert>
 #include <exception>
 
 #include <unifex/detail/prologue.hpp>
@@ -71,7 +70,7 @@ public:
   {}
 
   void set_value() && noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
 
     // This signals to retry the operation.
     auto* const op = op_;
@@ -80,14 +79,14 @@ public:
     using source_receiver_t = source_receiver<Source, Func, Receiver>;
 
     if constexpr (is_nothrow_connectable_v<Source&, source_receiver_t>) {
-      auto& sourceOp = unifex::activate_union_member_from(op->sourceOp_, [&]() noexcept {
+      auto& sourceOp = unifex::activate_union_member_with(op->sourceOp_, [&]() noexcept {
           return unifex::connect(op->source_, source_receiver_t{op});
         });
       op->isSourceOpConstructed_ = true;
       unifex::start(sourceOp);
     } else {
       UNIFEX_TRY {
-        auto& sourceOp = unifex::activate_union_member_from(op->sourceOp_, [&] {
+        auto& sourceOp = unifex::activate_union_member_with(op->sourceOp_, [&] {
             return unifex::connect(op->source_, source_receiver_t{op});
           });
         op->isSourceOpConstructed_ = true;
@@ -101,7 +100,7 @@ public:
   template(typename R = Receiver)
     (requires receiver<R>)
   void set_done() && noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
 
     auto* const op = op_;
     destroy_trigger_op();
@@ -111,7 +110,7 @@ public:
   template(typename Error)
     (requires receiver<Receiver, Error>)
   void set_error(Error error) && noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
 
     auto* const op = op_;
 
@@ -144,7 +143,7 @@ private:
   }
 
   const Receiver& get_receiver() const noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     return op_->receiver_;
   }
 
@@ -171,19 +170,19 @@ public:
     (requires receiver_of<Receiver, Values...>)
   void set_value(Values&&... values)
       noexcept(is_nothrow_receiver_of_v<Receiver, Values...>) {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_value(std::move(op_->receiver_), (Values&&)values...);
   }
 
   void set_done() noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     unifex::set_done(std::move(op_->receiver_));
   }
 
   template(typename Error)
     (requires is_invocable_v<Func&, Error>)
   void set_error(Error error) noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     auto* const op = op_;
 
     op->isSourceOpConstructed_ = false;
@@ -195,7 +194,7 @@ public:
 
     if constexpr (is_nothrow_invocable_v<Func&, Error> &&
                   is_nothrow_connectable_v<trigger_sender_t, trigger_receiver_t>) {
-      auto& triggerOp = unifex::activate_union_member_from<trigger_op_t>(
+      auto& triggerOp = unifex::activate_union_member_with<trigger_op_t>(
         op->triggerOps_,
         [&]() noexcept {
           return unifex::connect(
@@ -204,7 +203,7 @@ public:
       unifex::start(triggerOp);
     } else {
       UNIFEX_TRY {
-        auto& triggerOp = unifex::activate_union_member_from<trigger_op_t>(
+        auto& triggerOp = unifex::activate_union_member_with<trigger_op_t>(
           op->triggerOps_,
             [&]() {
               return unifex::connect(
@@ -238,7 +237,7 @@ private:
   }
 
   const Receiver& get_receiver() const noexcept {
-    assert(op_ != nullptr);
+    UNIFEX_ASSERT(op_ != nullptr);
     return op_->receiver_;
   }
 
@@ -259,7 +258,7 @@ public:
   : source_((Source2&&)source)
   , func_((Func2&&)func)
   , receiver_((Receiver&&)receiver) {
-    unifex::activate_union_member_from(sourceOp_, [&] {
+    unifex::activate_union_member_with(sourceOp_, [&] {
         return unifex::connect(source_, source_receiver_t{this});
       });
   }
