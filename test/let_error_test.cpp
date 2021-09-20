@@ -1,11 +1,11 @@
 /*
  * Copyright (c) Facebook, Inc. and its affiliates.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *   https://llvm.org/LICENSE.txt
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,9 +19,9 @@
 #include <unifex/just.hpp>
 #include <unifex/just_error.hpp>
 #include <unifex/on.hpp>
-#include <unifex/transform.hpp>
-#include <unifex/transform_done.hpp>
-#include <unifex/transform_error.hpp>
+#include <unifex/then.hpp>
+#include <unifex/let_done.hpp>
+#include <unifex/let_error.hpp>
 #include <unifex/sequence.hpp>
 #include <unifex/stop_when.hpp>
 #include <unifex/just_from.hpp>
@@ -45,8 +45,8 @@ TEST(TransformError, Smoke) {
   sync_wait(
     stop_when(
       sequence(
-        transform_error(
-          transform_done(
+        let_error(
+          let_done(
             schedule_after(scheduler, 200ms), 
             []{ return just_error(-1); }),
           []{ return just(); }),
@@ -64,7 +64,7 @@ TEST(TransformError, StayError) {
   int count = 0;
 
   auto op = sequence(
-    on(scheduler, just_error(42) | transform_error([]{ return just(); })),
+    on(scheduler, just_error(42) | let_error([]{ return just(); })),
     just_from([&]{ ++count; }));
   sync_wait(std::move(op));
 
@@ -80,8 +80,8 @@ TEST(TransformError, Pipeable) {
 
   sequence(
     schedule_after(scheduler, 200ms)
-      | transform_done([]{ return just_error(-1); })
-      | transform_error([]{ return just(); }), 
+      | let_done([]{ return just_error(-1); })
+      | let_error([]{ return just(); }), 
     just_from([&]{ ++count; }))
     | stop_when(schedule_after(scheduler, 100ms))
     | sync_wait();
@@ -92,7 +92,7 @@ TEST(TransformError, Pipeable) {
 TEST(TransformError, WithValue) {
   auto one = 
     just_error(-1)
-    | transform_error([]{ return just(42); })
+    | let_error([]{ return just(42); })
     | sync_wait();
 
   EXPECT_TRUE(one.has_value());
@@ -100,7 +100,7 @@ TEST(TransformError, WithValue) {
 
   auto multiple = 
     just_error(-1)
-    | transform_error([]{ return just(42, 1, 2); })
+    | let_error([]{ return just(42, 1, 2); })
     | sync_wait();
 
   EXPECT_TRUE(multiple.has_value());

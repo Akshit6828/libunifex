@@ -1,11 +1,11 @@
 /*
  * Copyright (c) Facebook, Inc. and its affiliates.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *   https://llvm.org/LICENSE.txt
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@
 #include <unifex/scheduler_concepts.hpp>
 #include <unifex/sender_concepts.hpp>
 #include <unifex/sequence.hpp>
-#include <unifex/transform.hpp>
+#include <unifex/then.hpp>
 #include <unifex/type_traits.hpp>
 #include <unifex/on.hpp>
 
@@ -172,7 +172,7 @@ public:
         just_from([this]() noexcept {
           request_stop();
         }),
-        transform(evt_.async_wait(), [this]() noexcept {
+        then(evt_.async_wait(), [this]() noexcept {
           // make sure to synchronize with all the fetch_subs being done while
           // operations complete
           (void)opState_.load(std::memory_order_acquire);

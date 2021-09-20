@@ -1,11 +1,11 @@
 /*
  * Copyright (c) Facebook, Inc. and its affiliates.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *   https://llvm.org/LICENSE.txt
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,12 +18,12 @@
 #include <unifex/sync_wait.hpp>
 #include <unifex/timed_single_thread_context.hpp>
 #include <unifex/scheduler_concepts.hpp>
-#include <unifex/transform.hpp>
+#include <unifex/then.hpp>
 #include <unifex/just.hpp>
 #include <unifex/just_done.hpp>
 #include <unifex/just_error.hpp>
-#include <unifex/transform_done.hpp>
-#include <unifex/transform_error.hpp>
+#include <unifex/let_done.hpp>
+#include <unifex/let_error.hpp>
 
 #include <cstdio>
 #include <thread>
@@ -37,7 +37,7 @@ TEST(Finally, Value) {
 
   auto res = just(42)
     | finally(schedule(context.get_scheduler()))
-    | transform([](int i){ return std::make_pair(i, std::this_thread::get_id() ); })
+    | then([](int i){ return std::make_pair(i, std::this_thread::get_id() ); })
     | sync_wait();
 
   ASSERT_FALSE(!res);
@@ -50,7 +50,7 @@ TEST(Finally, Done) {
 
   auto res = just_done()
     | finally(schedule(context.get_scheduler()))
-    | transform_done([](){ return just(std::this_thread::get_id()); })
+    | let_done([](){ return just(std::this_thread::get_id()); })
     | sync_wait();
 
   ASSERT_FALSE(!res);
@@ -62,7 +62,7 @@ TEST(Finally, Error) {
 
   auto res = just_error(-1)
     | finally(schedule(context.get_scheduler()))
-    | transform_error([]{ return just(std::this_thread::get_id()); })
+    | let_error([]{ return just(std::this_thread::get_id()); })
     | sync_wait();
 
   ASSERT_TRUE(res.has_value());
